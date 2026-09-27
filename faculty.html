@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faculty Portal | Silver Oak University ERP</title>
+    <script>
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        if (!token || user.role !== 'faculty') window.location.href = 'index.html';
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style> body { font-family: 'Plus Jakarta Sans', sans-serif; } </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col md:flex-row antialiased">
+    <!-- Sliding Mobile Backdrop -->
+    <div id="mobile-backdrop" onclick="toggleMobileNav()" class="fixed inset-0 bg-slate-900/60 z-30 hidden md:hidden backdrop-blur-sm transition-opacity"></div>
+    
+    <div id="toast-box" class="fixed top-4 right-4 left-4 sm:left-auto sm:w-96 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <!-- Mobile Top Navigation Bar -->
+    <header class="md:hidden bg-[#1e1b4b] text-white px-4 py-3 flex items-center justify-between sticky top-0 z-20 border-b border-indigo-950 shadow-md">
+        <div class="flex items-center space-x-2.5">
+            <button type="button" onclick="toggleMobileNav()" class="p-2 text-indigo-300 hover:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <i class="fa-solid fa-bars text-lg"></i>
+            </button>
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-chalkboard-user text-indigo-400"></i>
+                <span class="font-extrabold text-xs tracking-tight">Faculty Console</span>
+            </div>
+        </div>
+        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">Academic Active</span>
+    </header>
+
+    <!-- Sidebar Navigation Drawer -->
+    <aside id="sidebar-drawer" class="fixed md:static inset-y-0 left-0 w-72 bg-[#1e1b4b] text-white p-6 flex flex-col justify-between z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none"style="display:flex;justify-content:flex-start;">
+        <div>
+            <!-- Header -->
+            <div class="flex items-center justify-between mb-6 pb-4 border-b border-indigo-950">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-lg font-bold shadow-lg shadow-indigo-600/30">
+                        <i class="fa-solid fa-chalkboard-user"></i>
+                    </div>
+                    <div>
+                        <h2 class="font-extrabold text-xs leading-none">Silver Oak ERP</h2>
+                        <span class="text-[9px] text-indigo-400 uppercase font-semibold">Faculty Console</span>
+                    </div>
+                </div>
+                <button type="button" onclick="toggleMobileNav()" class="md:hidden text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Tab Switchers -->
+            <nav class="space-y-1.5 text-xs">
+                <button onclick="switchTab('attendance')" id="tab-btn-attendance" class="w-full text-left px-3.5 py-3 rounded-xl font-bold flex items-center space-x-3 bg-indigo-600 text-white shadow-sm transition">
+                    <i class="fa-solid fa-calendar-check w-4 text-center"></i>
+                    <span>Mark Attendance</span>
+                </button>
+                <button onclick="switchTab('tickets')" id="tab-btn-tickets" class="w-full text-left px-3.5 py-3 rounded-xl font-bold flex items-center space-x-3 text-slate-300 hover:bg-slate-800/60 transition">
+                    <i class="fa-solid fa-ticket w-4 text-center"></i>
+                    <span>AI Escalated Tickets</span>
+                </button>
+                <button onclick="switchTab('students')" id="tab-btn-students" class="w-full text-left px-3.5 py-3 rounded-xl font-bold flex items-center space-x-3 text-slate-300 hover:bg-slate-800/60 transition">
+                    <i class="fa-solid fa-graduation-cap w-4 text-center"></i>
+                    <span>Department Roster</span>
+                </button>
+                <button onclick="switchTab('settings')" id="tab-btn-settings" class="w-full text-left px-3.5 py-3 rounded-xl font-bold flex items-center space-x-3 text-slate-300 hover:bg-slate-800/60 transition">
+                    <i class="fa-solid fa-key w-4 text-center"></i>
+                    <span>Change Password</span>
+                </button>
+            </nav>
+        </div>
+
+        <div class="pt-10 border-t border-indigo-950">
+            <div class="text-xs text-slate-300 mb-1 truncate"><strong class="text-white" id="fac-name">Prof. User</strong></div>
+            <div class="text-[10px] text-indigo-300 mb-3 truncate" id="fac-branch">Department</div>
+            <button onclick="localStorage.clear(); window.location.href='index.html';" class="w-full py-2 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                <span>Sign Out</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 overflow-y-auto w-full min-w-0">
+        <!-- 1. MARK ATTENDANCE TAB -->
+        <section id="view-attendance" class="space-y-4">
+            <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <div>
+                        <h2 class="text-base sm:text-lg font-bold text-slate-900">Attendance Session Manager</h2>
+                        <p class="text-xs text-slate-500">Pick scheduled lecture. Submissions can be revised up to 3 hours.</p>
+                    </div>
+                </div>
+
+                <!-- Lecture Schedule Selector -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Lecture Date</label>
+                        <input type="date" id="att-date" onchange="loadScheduledLectures()" class="w-full p-2 bg-white border rounded-lg text-xs outline-none">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Select Scheduled Class Session</label>
+                        <select id="att-lecture-select" onchange="onLectureSelectChange()" class="w-full p-2 bg-white border rounded-lg text-xs outline-none font-semibold"></select>
+                    </div>
+                </div>
+
+                <!-- Rapid Roll Call Jump Input -->
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between p-3.5 bg-indigo-50 border border-indigo-200 rounded-xl gap-3">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-xs font-bold text-indigo-900"><i class="fa-solid fa-bolt text-indigo-600 mr-1"></i> Jump Roll No:</span>
+                        <input type="text" id="rapid-jump-input" placeholder="e.g. 15, 08" onkeyup="handleRapidJump(event)"
+                            class="px-3 py-1.5 bg-white border border-indigo-300 rounded-lg text-xs font-mono font-bold outline-none w-28 focus:ring-2 focus:ring-indigo-400">
+                        <span class="text-[10px] text-indigo-600">(Press Enter to jump, P/A to mark)</span>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="markAll('P')" class="flex-1 sm:flex-none px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold shadow-sm">Mark All P</button>
+                        <button onclick="markAll('A')" class="flex-1 sm:flex-none px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-bold shadow-sm">Mark All A</button>
+                    </div>
+                </div>
+
+                <!-- Roster Table with Mobile Horizontal Scroll Guard -->
+                <div class="overflow-x-auto rounded-xl border border-slate-200 max-h-[380px] overflow-y-auto">
+                    <table class="w-full text-xs text-left whitespace-nowrap min-w-[480px]">
+                        <thead class="bg-slate-100 uppercase text-slate-600 font-bold border-b sticky top-0">
+                            <tr>
+                                <th class="p-3">Enrollment</th>
+                                <th class="p-3">Student Name</th>
+                                <th class="p-3 text-center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="roster-tbody" class="divide-y text-slate-700"></tbody>
+                    </table>
+                </div>
+
+                <div class="flex justify-end pt-2">
+                    <button onclick="openSubmitConfirmModal()" id="btn-submit-att" class="w-full sm:w-auto px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 shadow-md">
+                        <i class="fa-solid fa-check"></i>
+                        <span>Review & Commit Attendance</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. AI TICKETS TAB -->
+        <section id="view-tickets" class="hidden space-y-4">
+            <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <h2 class="text-base sm:text-lg font-bold text-slate-900">Department AI Escalated Inquiries</h2>
+                <div class="overflow-x-auto rounded-xl border border-slate-200">
+                    <table class="w-full text-xs text-left whitespace-nowrap min-w-[620px]">
+                        <thead class="bg-slate-100 uppercase text-slate-600 font-bold border-b">
+                            <tr>
+                                <th class="p-3">Ticket ID</th>
+                                <th class="p-3">Student</th>
+                                <th class="p-3">Query</th>
+                                <th class="p-3">Status</th>
+                                <th class="p-3 text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tickets-tbody" class="divide-y text-slate-700"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. DEPARTMENT ROSTER TAB -->
+        <section id="view-students" class="hidden space-y-4">
+            <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <h2 class="text-base sm:text-lg font-bold text-slate-900">Enrolled Branch Students</h2>
+                <div class="overflow-x-auto rounded-xl border border-slate-200">
+                    <table class="w-full text-xs text-left whitespace-nowrap min-w-[480px]">
+                        <thead class="bg-slate-100 uppercase text-slate-600 font-bold border-b">
+                            <tr>
+                                <th class="p-3">Enrollment</th>
+                                <th class="p-3">Name</th>
+                                <th class="p-3">Email</th>
+                                <th class="p-3">Semester</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dept-students-tbody" class="divide-y text-slate-700"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. CHANGE PASSWORD TAB -->
+        <section id="view-settings" class="hidden space-y-4">
+            <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm max-w-md">
+                <h2 class="text-base sm:text-lg font-bold text-slate-900 mb-4">Update Faculty Account Password</h2>
+                <form onsubmit="handleChangePassword(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Current Password</label>
+                        <input type="password" id="pwd-old" required class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">New Password</label>
+                        <input type="password" id="pwd-new" required class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs outline-none">
+                    </div>
+                    <button type="submit" class="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-500">Update Password</button>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <!-- Confirmation Modal with Stats & Percentage -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white p-6 rounded-3xl max-w-sm w-full space-y-4 text-center shadow-2xl">
+            <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto text-xl font-bold">
+                <i class="fa-solid fa-clipboard-check"></i>
+            </div>
+            <div>
+                <h3 class="text-base font-extrabold text-slate-900">Confirm Attendance</h3>
+                <p class="text-xs text-slate-500 mt-1">Review headcount figures before submitting:</p>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 bg-slate-50 p-3 rounded-2xl border text-xs">
+                <div>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase">Total</span>
+                    <div class="font-extrabold text-slate-800 text-sm" id="conf-total">0</div>
+                </div>
+                <div>
+                    <span class="text-[10px] text-emerald-600 font-bold uppercase">Present</span>
+                    <div class="font-extrabold text-emerald-700 text-sm" id="conf-present">0</div>
+                </div>
+                <div>
+                    <span class="text-[10px] text-rose-600 font-bold uppercase">Absent</span>
+                    <div class="font-extrabold text-rose-700 text-sm" id="conf-absent">0</div>
+                </div>
+            </div>
+
+            <div class="p-2.5 bg-indigo-50 border border-indigo-200 rounded-xl text-xs font-medium">
+                Attendance Ratio: <strong class="text-indigo-700 font-extrabold" id="conf-percent">0%</strong> Present
+            </div>
+
+            <div class="flex justify-center space-x-2 pt-1">
+                <button onclick="closeConfirmModal()" class="flex-1 py-2 bg-slate-200 text-slate-700 rounded-xl text-xs font-bold">Revise</button>
+                <button onclick="commitAttendanceNow()" class="flex-1 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-500 shadow-md">Submit Final</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reply Modal -->
+    <div id="reply-modal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white p-6 rounded-2xl max-w-md w-full space-y-4">
+            <h3 class="text-base font-bold text-slate-900">Resolve Student Ticket</h3>
+            <textarea id="reply-text" rows="3" placeholder="Enter official resolution response..." class="w-full p-2.5 border rounded-xl text-xs outline-none"></textarea>
+            <div class="flex justify-end space-x-2">
+                <button onclick="closeReplyModal()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-xl text-xs font-bold">Cancel</button>
+                <button onclick="submitReply()" class="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold">Submit</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = (window.location.protocol === 'file:' || (window.location.port !== '3000' && window.location.port !== '')) ? 'http://localhost:3000' : '';
+        const socket = io(API_BASE || undefined);
+
+        document.getElementById('fac-name').innerText = user.name;
+        document.getElementById('fac-branch').innerText = `${user.college} - ${user.branch}`;
+        document.getElementById('att-date').value = new Date().toISOString().split('T')[0];
+
+        let roster = [];
+        let scheduledLectures = [];
+        let activeLecture = null;
+        let activeTicketId = null;
+
+        function toggleMobileNav() {
+            document.getElementById('sidebar-drawer').classList.toggle('-translate-x-full');
+            document.getElementById('mobile-backdrop').classList.toggle('hidden');
+        }
+
+        function showToast(msg, isSuccess = false) {
+            const container = document.getElementById('toast-box');
+            const toast = document.createElement('div');
+            toast.className = `p-3 rounded-xl border text-xs flex items-center shadow-lg pointer-events-auto transition ${isSuccess ? 'bg-emerald-950 border-emerald-500 text-emerald-200' : 'bg-rose-950 border-rose-500 text-rose-200'}`;
+            toast.innerHTML = `<i class="fa-solid ${isSuccess ? 'fa-check text-emerald-400' : 'fa-triangle-exclamation text-rose-400'} mr-2"></i><span>${msg}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3500);
+        }
+
+        function switchTab(tab) {
+            if (window.innerWidth < 768) {
+                document.getElementById('sidebar-drawer').classList.add('-translate-x-full');
+                document.getElementById('mobile-backdrop').classList.add('hidden');
+            }
+
+            ['attendance', 'tickets', 'students', 'settings'].forEach(t => {
+                document.getElementById(`view-${t}`).classList.add('hidden');
+                document.getElementById(`tab-btn-${t}`).className = "w-full text-left px-3.5 py-3 rounded-xl font-bold flex items-center space-x-3 text-slate-300 hover:bg-slate-800/60 transition";
+            });
+            document.getElementById(`view-${tab}`).classList.remove('hidden');
+            document.getElementById(`tab-btn-${tab}`).className = "w-full text-left px-3.5 py-3 rounded-xl font-bold flex items-center space-x-3 bg-indigo-600 text-white shadow-sm transition";
+
+            if (tab === 'attendance') loadScheduledLectures();
+            if (tab === 'tickets') loadTickets();
+            if (tab === 'students') loadDeptStudents();
+        }
+
+        async function loadScheduledLectures() {
+            const date = document.getElementById('att-date').value;
+            const res = await fetch(`${API_BASE}/api/timetable?date=${date}&college=${encodeURIComponent(user.college)}&branch=${encodeURIComponent(user.branch)}`);
+            scheduledLectures = await res.json();
+
+            const select = document.getElementById('att-lecture-select');
+            select.innerHTML = '';
+
+            if (scheduledLectures.length === 0) {
+                select.innerHTML = '<option value="">No lectures scheduled for this date</option>';
+                roster = [];
+                renderRoster();
+                return;
+            }
+
+            scheduledLectures.forEach((lec, idx) => {
+                select.innerHTML += `<option value="${idx}">Lec #${lec.lecture_number}: ${lec.subject_name} (${lec.time_slot})</option>`;
+            });
+
+            onLectureSelectChange();
+        }
+
+        async function onLectureSelectChange() {
+            const idx = document.getElementById('att-lecture-select').value;
+            if (idx === "") return;
+            activeLecture = scheduledLectures[idx];
+
+            const res = await fetch(`${API_BASE}/api/users?role=faculty&college=${encodeURIComponent(user.college)}&branch=${encodeURIComponent(user.branch)}`);
+            const students = await res.json();
+
+            const attRes = await fetch(`${API_BASE}/api/attendance?role=faculty&date=${activeLecture.date}&time_slot=${encodeURIComponent(activeLecture.time_slot)}&faculty_id=${user.id}`);
+            const markedData = await attRes.json();
+            const markedMap = {};
+            markedData.forEach(m => markedMap[m.student_id] = m.status);
+
+            roster = students.map(s => ({
+                student_id: s.id,
+                name: s.name,
+                enrollment_no: s.enrollment_no,
+                status: markedMap[s.id] || 'P'
+            }));
+
+            renderRoster();
+        }
+
+        function renderRoster() {
+            const tbody = document.getElementById('roster-tbody');
+            if (roster.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-400">No students enrolled in this branch roster.</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = roster.map((s, i) => `
+                <tr id="row-${s.enrollment_no}" class="hover:bg-slate-50 transition-colors">
+                    <td class="p-3 font-mono font-bold">${s.enrollment_no}</td>
+                    <td class="p-3 font-medium">${s.name}</td>
+                    <td class="p-3 text-center">
+                        <button onclick="roster[${i}].status='P'; renderRoster();" class="px-3 py-1 rounded-lg text-xs font-bold ${s.status === 'P' ? 'bg-emerald-600 text-white shadow' : 'bg-slate-200 text-slate-700'}">P</button>
+                        <button onclick="roster[${i}].status='A'; renderRoster();" class="px-3 py-1 rounded-lg text-xs font-bold ${s.status === 'A' ? 'bg-rose-600 text-white shadow' : 'bg-slate-200 text-slate-700'}">A</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function handleRapidJump(e) {
+            const val = e.target.value.trim();
+            if (!val) return;
+
+            const matchIndex = roster.findIndex(s => s.enrollment_no.endsWith(val));
+            if (matchIndex !== -1) {
+                const student = roster[matchIndex];
+                const row = document.getElementById(`row-${student.enrollment_no}`);
+                if (row) {
+                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    row.classList.add('bg-indigo-100');
+                    setTimeout(() => row.classList.remove('bg-indigo-100'), 1500);
+                }
+
+                if (e.key === 'p' || e.key === 'P') {
+                    roster[matchIndex].status = 'P';
+                    renderRoster();
+                    e.target.value = '';
+                } else if (e.key === 'a' || e.key === 'A') {
+                    roster[matchIndex].status = 'A';
+                    renderRoster();
+                    e.target.value = '';
+                }
+            }
+        }
+
+        function markAll(status) {
+            roster.forEach(r => r.status = status);
+            renderRoster();
+        }
+
+        function openSubmitConfirmModal() {
+            if (!activeLecture || roster.length === 0) return showToast("No class roster loaded.");
+
+            const total = roster.length;
+            const present = roster.filter(s => s.status === 'P').length;
+            const absent = total - present;
+            const percent = total === 0 ? 0 : Math.round((present / total) * 100);
+
+            document.getElementById('conf-total').innerText = total;
+            document.getElementById('conf-present').innerText = present;
+            document.getElementById('conf-absent').innerText = absent;
+            document.getElementById('conf-percent').innerText = `${percent}%`;
+
+            document.getElementById('confirm-modal').classList.remove('hidden');
+            document.getElementById('confirm-modal').classList.add('flex');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirm-modal').classList.add('hidden');
+            document.getElementById('confirm-modal').classList.remove('flex');
+        }
+
+        async function commitAttendanceNow() {
+            closeConfirmModal();
+            const payload = {
+                timetable_id: activeLecture.id,
+                date: activeLecture.date,
+                time_slot: activeLecture.time_slot,
+                subject: activeLecture.subject_name,
+                faculty_id: user.id,
+                records: roster
+            };
+
+            const res = await fetch(`${API_BASE}/api/attendance`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (res.ok) {
+                showToast(data.message, true);
+            } else {
+                showToast(data.error);
+            }
+        }
+
+        async function loadTickets() {
+            const res = await fetch(`${API_BASE}/api/tickets?role=faculty&college=${encodeURIComponent(user.college)}&branch=${encodeURIComponent(user.branch)}`);
+            const tickets = await res.json();
+            const tbody = document.getElementById('tickets-tbody');
+            if (tickets.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">No student support tickets assigned.</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = tickets.map(t => `
+                <tr class="hover:bg-slate-50">
+                    <td class="p-3 font-mono font-bold text-indigo-600">${t.ticket_id}</td>
+                    <td class="p-3 font-medium">${t.student_name} (${t.enrollment_no})</td>
+                    <td class="p-3 text-slate-600">${t.query}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${t.status === 'Resolved' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">${t.status}</span></td>
+                    <td class="p-3 text-center space-x-1">
+                        ${t.status === 'Open' ? `<button onclick="openReplyModal('${t.ticket_id}')" class="px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-500">Reply</button>` : `<button onclick="deleteTicket('${t.ticket_id}')" class="px-2 py-1 bg-slate-100 hover:bg-rose-100 text-rose-600 rounded-lg text-xs font-bold"><i class="fa-solid fa-trash"></i></button>`}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function openReplyModal(tId) { activeTicketId = tId; document.getElementById('reply-modal').classList.remove('hidden'); document.getElementById('reply-modal').classList.add('flex'); }
+        function closeReplyModal() { document.getElementById('reply-modal').classList.add('hidden'); document.getElementById('reply-modal').classList.remove('flex'); }
+
+        async function submitReply() {
+            const text = document.getElementById('reply-text').value;
+            await fetch(`${API_BASE}/api/tickets/reply`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ticketId: activeTicketId, replyText: text, facultyName: user.name })
+            });
+            closeReplyModal();
+            showToast("Resolution sent to student.", true);
+            loadTickets();
+        }
+
+        async function deleteTicket(tId) {
+            await fetch(`${API_BASE}/api/tickets/${tId}`, { method: 'DELETE' });
+            showToast("Ticket purged.", true);
+            loadTickets();
+        }
+
+        async function loadDeptStudents() {
+            const res = await fetch(`${API_BASE}/api/users?role=faculty&college=${encodeURIComponent(user.college)}&branch=${encodeURIComponent(user.branch)}`);
+            const students = await res.json();
+            document.getElementById('dept-students-tbody').innerHTML = students.map(s => `
+                <tr class="hover:bg-slate-50">
+                    <td class="p-3 font-mono font-bold">${s.enrollment_no}</td>
+                    <td class="p-3 font-semibold">${s.name}</td>
+                    <td class="p-3 text-slate-500">${s.email || 'N/A'}</td>
+                    <td class="p-3 font-bold text-indigo-700">Sem ${s.semester || 7}</td>
+                </tr>
+            `).join('');
+        }
+
+        async function handleChangePassword(e) {
+            e.preventDefault();
+            const res = await fetch(`${API_BASE}/api/auth/change-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: user.id,
+                    oldPassword: document.getElementById('pwd-old').value,
+                    newPassword: document.getElementById('pwd-new').value
+                })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                showToast(data.message, true);
+                document.getElementById('pwd-old').value = '';
+                document.getElementById('pwd-new').value = '';
+            } else {
+                showToast(data.error);
+            }
+        }
+
+        socket.on('new_ticket_created', () => { showToast("New student ticket submitted!", true); loadTickets(); });
+
+        loadScheduledLectures();
+    </script>
+</body>
+</html>

@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Portal | Silver Oak University ERP</title>
+    <script>
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        if (!token || user.role !== 'student') window.location.href = 'index.html';
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style> 
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .typing-cursor::after {
+            content: '▋';
+            display: inline-block;
+            animation: blink 0.7s infinite;
+        }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col md:flex-row antialiased">
+    <!-- Sliding Mobile Backdrop -->
+    <div id="mobile-backdrop" onclick="toggleMobileNav()" class="fixed inset-0 bg-slate-900/60 z-30 hidden md:hidden backdrop-blur-sm transition-opacity"></div>
+    
+    <div id="toast-box" class="fixed top-4 right-4 left-4 sm:left-auto sm:w-96 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <!-- Mobile Top Navigation Bar -->
+    <header class="md:hidden bg-[#1e1b4b] text-white px-4 py-3 flex items-center justify-between sticky top-0 z-20 border-b border-indigo-950 shadow-md">
+        <div class="flex items-center space-x-2.5">
+            <button type="button" onclick="toggleMobileNav()" class="p-2 text-indigo-300 hover:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <i class="fa-solid fa-bars text-lg"></i>
+            </button>
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-graduation-cap text-indigo-400"></i>
+                <span class="font-extrabold text-xs tracking-tight">Student Desk</span>
+            </div>
+        </div>
+        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">Sem 7 Active</span>
+    </header>
+
+    <!-- Sidebar Navigation Drawer -->
+    <aside id="sidebar-drawer" class="fixed md:static inset-y-0 left-0 w-72 bg-[#1e1b4b] text-white p-6 flex flex-col justify-between z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none" style="display: flex;justify-content: flex-start;" >
+        <div>
+            <!-- Header -->
+            <div class="flex items-center justify-between mb-6 pb-4 border-b border-indigo-950">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-lg font-bold shadow-lg shadow-indigo-600/30">
+                        <i class="fa-solid fa-graduation-cap"></i>
+                    </div>
+                    <div>
+                        <h2 class="font-extrabold text-xs leading-none">Silver Oak ERP</h2>
+                        <span class="text-[9px] text-indigo-400 uppercase font-semibold">Student Portal</span>
+                    </div>
+                </div>
+                <button type="button" onclick="toggleMobileNav()" class="md:hidden text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Tab Switchers -->
+            <nav class="space-y-1.5 text-xs">
+                <button onclick="switchTab('chat')" id="tab-btn-chat" class="w-full text-left px-3.5 py-3 rounded-xl font-bold flex items-center space-x-3 bg-indigo-600 text-white shadow-sm transition">
+                    <i class="fa-solid fa-wand-magic-sparkles w-4 text-center"></i>
+                    <span>AI Help Desk</span>
+                </button>
+                <button onclick="switchTab('attendance')" id="tab-btn-attendance" class="w-full text-left px-3.5 py-3 rounded-xl font-bold flex items-center space-x-3 text-slate-300 hover:bg-slate-800/60 transition">
+                    <i class="fa-solid fa-calendar-days w-4 text-center"></i>
+                    <span>Attendance Log</span>
+                </button>
+                <button onclick="switchTab('tickets')" id="tab-btn-tickets" class="w-full text-left px-3.5 py-3 rounded-xl font-bold flex items-center space-x-3 text-slate-300 hover:bg-slate-800/60 transition">
+                    <i class="fa-solid fa-tags w-4 text-center"></i>
+                    <span>Support Tickets</span>
+                </button>
+                <button onclick="switchTab('profile')" id="tab-btn-profile" class="w-full text-left px-3.5 py-3 rounded-xl font-bold flex items-center space-x-3 text-slate-300 hover:bg-slate-800/60 transition">
+                    <i class="fa-solid fa-user w-4 text-center"></i>
+                    <span>Profile & Security</span>
+                </button>
+            </nav>
+        </div>
+
+        <div class="pt-10 border-t border-indigo-950">
+            <div class="text-xs text-slate-300 mb-1 truncate" id="std-name">Student User</div>
+            <div class="text-[10px] text-indigo-300 font-mono mb-3 truncate" id="std-enroll">23040304001</div>
+            <button onclick="localStorage.clear(); window.location.href='index.html';" class="w-full py-2 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                <span>Sign Out</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 overflow-y-auto w-full min-w-0">
+        <!-- 1. AI CHATBOT TAB (Responsive Viewport Height) -->
+        <section id="view-chat" class="space-y-4">
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[calc(100vh-140px)] sm:h-[600px]">
+                <div class="p-3.5 sm:p-4 bg-gradient-to-r from-slate-900 to-indigo-950 text-white rounded-t-2xl flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-xs sm:text-sm"><i class="fa-solid fa-robot"></i></div>
+                        <div>
+                            <h3 class="font-bold text-xs">Silver Oak Multi-Agent AI Desk</h3>
+                            <p class="text-[9px] sm:text-[10px] text-indigo-300">Continuous conversation history enabled</p>
+                        </div>
+                    </div>
+                    <button onclick="clearChatHistory()" class="px-2.5 py-1 bg-white/10 hover:bg-rose-600 hover:text-white text-[11px] font-semibold rounded-lg transition flex items-center space-x-1">
+                        <i class="fa-solid fa-trash-can text-[10px]"></i>
+                        <span>Clear</span>
+                    </button>
+                </div>
+
+                <!-- Chat Log with Dynamic Auto-scroll -->
+                <div id="chat-box" class="flex-1 p-3.5 sm:p-4 overflow-y-auto space-y-4 bg-slate-50/50 text-xs"></div>
+
+                <!-- Chat Input Strip -->
+                <form onsubmit="sendChat(event)" class="p-2.5 sm:p-3 bg-white border-t flex space-x-2 rounded-b-2xl">
+                    <input type="text" id="chat-input" required placeholder="Ask your academic or department question..." class="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 bg-slate-50 border rounded-xl text-xs outline-none focus:border-indigo-500">
+                    <button type="submit" id="chat-send-btn" class="px-4 sm:px-5 py-2 sm:py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5 flex-shrink-0">
+                        <span>Send</span>
+                        <i class="fa-solid fa-paper-plane text-xs"></i>
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- 2. ATTENDANCE DASHBOARD -->
+        <section id="view-attendance" class="hidden space-y-4">
+            <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <div>
+                        <h2 class="text-base sm:text-lg font-bold text-slate-900">Academic Lecture Attendance</h2>
+                        <p class="text-xs text-slate-500">Scheduled timetable sessions with real-time status.</p>
+                    </div>
+                    <div class="flex items-center space-x-2 w-full sm:w-auto">
+                        <label class="text-xs font-bold text-slate-500 uppercase">Date:</label>
+                        <input type="date" id="student-att-date" onchange="loadStudentAttendance()" class="flex-1 sm:flex-none p-2 bg-slate-50 border rounded-xl text-xs font-semibold outline-none">
+                    </div>
+                </div>
+
+                <!-- Summary Strip -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-3 sm:p-4 rounded-xl border">
+                    <div>
+                        <span class="text-[10px] uppercase font-bold text-slate-400">Total Lectures</span>
+                        <h4 class="text-base sm:text-lg font-black text-slate-800" id="att-summary-total">0</h4>
+                    </div>
+                    <div>
+                        <span class="text-[10px] uppercase font-bold text-emerald-600">Present</span>
+                        <h4 class="text-base sm:text-lg font-black text-emerald-700" id="att-summary-present">0</h4>
+                    </div>
+                    <div>
+                        <span class="text-[10px] uppercase font-bold text-rose-600">Absent</span>
+                        <h4 class="text-base sm:text-lg font-black text-rose-700" id="att-summary-absent">0</h4>
+                    </div>
+                    <div>
+                        <span class="text-[10px] uppercase font-bold text-indigo-600">Overall Ratio</span>
+                        <h4 class="text-base sm:text-lg font-black text-indigo-700" id="att-summary-percent">100%</h4>
+                    </div>
+                </div>
+
+                <!-- Table with Horizontal Scroll Guard -->
+                <div class="overflow-x-auto rounded-xl border border-slate-200">
+                    <table class="w-full text-xs text-left whitespace-nowrap min-w-[580px]">
+                        <thead class="bg-slate-100 uppercase text-slate-600 font-bold border-b">
+                            <tr>
+                                <th class="p-3">Lec #</th>
+                                <th class="p-3">Time Slot</th>
+                                <th class="p-3">Subject</th>
+                                <th class="p-3">Faculty</th>
+                                <th class="p-3">Location</th>
+                                <th class="p-3 text-center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="student-att-tbody" class="divide-y text-slate-700"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. MY SUPPORT TICKETS TAB -->
+        <section id="view-tickets" class="hidden space-y-4">
+            <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <div>
+                    <h2 class="text-base sm:text-lg font-bold text-slate-900">Escalated Department Tickets</h2>
+                    <p class="text-xs text-slate-500">Track queries routed to professors by the AI agent.</p>
+                </div>
+                <div class="overflow-x-auto rounded-xl border border-slate-200">
+                    <table class="w-full text-xs text-left whitespace-nowrap min-w-[620px]">
+                        <thead class="bg-slate-100 uppercase text-slate-600 font-bold border-b">
+                            <tr>
+                                <th class="p-3">Ticket ID</th>
+                                <th class="p-3">Query</th>
+                                <th class="p-3">Assigned Faculty</th>
+                                <th class="p-3">Status</th>
+                                <th class="p-3">Resolution Response</th>
+                            </tr>
+                        </thead>
+                        <tbody id="student-ticket-tbody" class="divide-y text-slate-700"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. PROFILE & CHANGE PASSWORD TAB -->
+        <section id="view-profile" class="hidden space-y-6">
+            <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
+                <h2 class="text-base sm:text-lg font-bold text-slate-900">Scholastic Profile & Tuition Status</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs">
+                    <div class="p-3.5 bg-slate-50 rounded-xl border">
+                        <span class="text-slate-400 font-semibold uppercase">Legal Name</span>
+                        <div class="text-sm font-bold text-slate-800" id="prof-name">Student User</div>
+                    </div>
+                    <div class="p-3.5 bg-slate-50 rounded-xl border">
+                        <span class="text-slate-400 font-semibold uppercase">Enrollment Number</span>
+                        <div class="text-sm font-bold font-mono text-indigo-600" id="prof-enroll">23040304001</div>
+                    </div>
+                    <div class="p-3.5 bg-slate-50 rounded-xl border">
+                        <span class="text-slate-400 font-semibold uppercase">College & Semester</span>
+                        <div class="text-sm font-bold text-slate-800" id="prof-college">Silver College of Computer Application (Sem 7)</div>
+                    </div>
+                    <div class="p-3.5 bg-slate-50 rounded-xl border">
+                        <span class="text-slate-400 font-semibold uppercase">Degree & Branch</span>
+                        <div class="text-sm font-bold text-slate-800" id="prof-branch">BSc - CS-IT</div>
+                    </div>
+                </div>
+
+                <div class="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <div>
+                        <span class="text-[10px] font-bold text-emerald-700 uppercase">Accounts & Fee Dues</span>
+                        <h4 class="text-base font-extrabold text-emerald-900">₹0.00 Outstanding Dues</h4>
+                    </div>
+                    <span class="px-3 py-1 bg-emerald-600 text-white rounded-lg text-xs font-bold">Clearance Certified</span>
+                </div>
+            </div>
+
+            <!-- Password Form -->
+            <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm max-w-md">
+                <h3 class="text-sm font-bold text-slate-900 mb-3">Update Account Password</h3>
+                <form onsubmit="handleStudentPassword(event)" class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Current Password</label>
+                        <input type="password" id="std-pwd-old" required class="w-full p-2 bg-slate-50 border rounded-xl text-xs outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">New Password</label>
+                        <input type="password" id="std-pwd-new" required class="w-full p-2 bg-slate-50 border rounded-xl text-xs outline-none">
+                    </div>
+                    <button type="submit" class="w-full py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-500">Update Password</button>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const API_BASE = (window.location.protocol === 'file:' || (window.location.port !== '3000' && window.location.port !== '')) ? 'http://localhost:3000' : '';
+        const socket = io(API_BASE || undefined);
+
+        document.getElementById('std-name').innerText = user.name;
+        document.getElementById('std-enroll').innerText = `${user.enrollment_no}`;
+        document.getElementById('prof-name').innerText = user.name;
+        document.getElementById('prof-enroll').innerText = user.enrollment_no;
+        document.getElementById('prof-college').innerText = `${user.college} (Sem ${user.semester || 7})`;
+        document.getElementById('prof-branch').innerText = `${user.degree} - ${user.branch}`;
+        document.getElementById('student-att-date').value = new Date().toISOString().split('T')[0];
+
+        function toggleMobileNav() {
+            document.getElementById('sidebar-drawer').classList.toggle('-translate-x-full');
+            document.getElementById('mobile-backdrop').classList.toggle('hidden');
+        }
+
+        function showToast(msg, isSuccess = false) {
+            const container = document.getElementById('toast-box');
+            const toast = document.createElement('div');
+            toast.className = `p-3 rounded-xl border text-xs flex items-center shadow-lg pointer-events-auto transition ${isSuccess ? 'bg-emerald-950 border-emerald-500 text-emerald-200' : 'bg-rose-950 border-rose-500 text-rose-200'}`;
+            toast.innerHTML = `<i class="fa-solid ${isSuccess ? 'fa-check text-emerald-400' : 'fa-triangle-exclamation text-rose-400'} mr-2"></i><span>${msg}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3500);
+        }
+
+        function switchTab(tab) {
+            if (window.innerWidth < 768) {
+                document.getElementById('sidebar-drawer').classList.add('-translate-x-full');
+                document.getElementById('mobile-backdrop').classList.add('hidden');
+            }
+
+            ['chat', 'attendance', 'tickets', 'profile'].forEach(t => {
+                document.getElementById(`view-${t}`).classList.add('hidden');
+                document.getElementById(`tab-btn-${t}`).className = "w-full text-left px-3.5 py-3 rounded-xl font-bold flex items-center space-x-3 text-slate-300 hover:bg-slate-800/60 transition";
+            });
+            document.getElementById(`view-${tab}`).classList.remove('hidden');
+            document.getElementById(`tab-btn-${tab}`).className = "w-full text-left px-3.5 py-3 rounded-xl font-bold flex items-center space-x-3 bg-indigo-600 text-white shadow-sm transition";
+
+            if (tab === 'attendance') loadStudentAttendance();
+            if (tab === 'tickets') loadTickets();
+        }
+
+        const CHAT_STORAGE_KEY = `sou_chat_${user.id}`;
+
+        function loadSavedChat() {
+            const saved = localStorage.getItem(CHAT_STORAGE_KEY);
+            const chatBox = document.getElementById('chat-box');
+            if (saved) {
+                chatBox.innerHTML = saved;
+            } else {
+                chatBox.innerHTML = `
+                    <div class="flex items-start space-x-2.5 max-w-md">
+                        <div class="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs flex-shrink-0"><i class="fa-solid fa-sparkles"></i></div>
+                        <div class="bg-white border p-3 rounded-2xl rounded-tl-none shadow-sm leading-relaxed text-slate-800">
+                            Hello! Ask me any question regarding attendance policies, examination schedules, or fee clearance.
+                        </div>
+                    </div>
+                `;
+            }
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function clearChatHistory() {
+            localStorage.removeItem(CHAT_STORAGE_KEY);
+            loadSavedChat();
+            showToast("Conversation history cleared.", true);
+        }
+
+        async function sendChat(e) {
+            e.preventDefault();
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            if (!message) return;
+
+            const chatBox = document.getElementById('chat-box');
+            const sendBtn = document.getElementById('chat-send-btn');
+
+            chatBox.innerHTML += `
+                <div class="flex justify-end">
+                    <div class="bg-indigo-600 text-white p-3 rounded-2xl rounded-tr-none max-w-md leading-relaxed shadow-sm font-medium">${message}</div>
+                </div>
+            `;
+            input.value = '';
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            const thinkingId = `thinking-${Date.now()}`;
+            chatBox.innerHTML += `
+                <div id="${thinkingId}" class="flex items-start space-x-2.5 max-w-md">
+                    <div class="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs flex-shrink-0"><i class="fa-solid fa-sparkles"></i></div>
+                    <div class="bg-white border p-3 rounded-2xl rounded-tl-none shadow-sm text-slate-500 italic flex items-center space-x-2">
+                        <i class="fa-solid fa-circle-notch fa-spin text-indigo-600"></i>
+                        <span>AI reasoning in progress...</span>
+                    </div>
+                </div>
+            `;
+            chatBox.scrollTop = chatBox.scrollHeight;
+            sendBtn.disabled = true;
+
+            try {
+                const res = await fetch(`${API_BASE}/api/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message, studentId: user.id })
+                });
+                const data = await res.json();
+                document.getElementById(thinkingId).remove();
+
+                const botBubbleId = `bot-${Date.now()}`;
+                chatBox.innerHTML += `
+                    <div class="flex items-start space-x-2.5 max-w-md">
+                        <div class="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs flex-shrink-0"><i class="fa-solid fa-sparkles"></i></div>
+                        <div id="${botBubbleId}" class="bg-white border p-3 rounded-2xl rounded-tl-none shadow-sm leading-relaxed text-slate-800 typing-cursor"></div>
+                    </div>
+                `;
+
+                const botBubble = document.getElementById(botBubbleId);
+                const fullText = data.response;
+                let charIdx = 0;
+
+                const interval = setInterval(() => {
+                    if (charIdx < fullText.length) {
+                        botBubble.textContent += fullText.charAt(charIdx);
+                        charIdx++;
+                        chatBox.scrollTop = chatBox.scrollHeight;
+                    } else {
+                        clearInterval(interval);
+                        botBubble.classList.remove('typing-cursor');
+                        sendBtn.disabled = false;
+                        localStorage.setItem(CHAT_STORAGE_KEY, chatBox.innerHTML);
+                        if (data.requiresRouting) loadTickets();
+                    }
+                }, 16);
+
+            } catch (err) {
+                if (document.getElementById(thinkingId)) document.getElementById(thinkingId).remove();
+                chatBox.innerHTML += `<div class="text-rose-500 text-xs">Error connecting to AI backend.</div>`;
+                sendBtn.disabled = false;
+            }
+        }
+
+        async function loadStudentAttendance() {
+            const date = document.getElementById('student-att-date').value;
+            const res = await fetch(`${API_BASE}/api/attendance?role=student&student_id=${user.id}&date=${date}`);
+            const data = await res.json();
+
+            const sumRes = await fetch(`${API_BASE}/api/attendance/summary?student_id=${user.id}`);
+            const summary = await sumRes.json();
+            document.getElementById('att-summary-total').innerText = summary.total;
+            document.getElementById('att-summary-present').innerText = summary.present;
+            document.getElementById('att-summary-absent').innerText = summary.absent;
+            document.getElementById('att-summary-percent').innerText = `${summary.percentage}%`;
+
+            const tbody = document.getElementById('student-att-tbody');
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">No scheduled sessions for this date.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = data.map(l => {
+                let badge = '';
+                if (l.status === 'P') badge = '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Present</span>';
+                else if (l.status === 'A') badge = '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">Absent</span>';
+                else badge = '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-600">Unmarked</span>';
+
+                return `
+                    <tr class="hover:bg-slate-50">
+                        <td class="p-3 font-bold">${l.lecture_number}</td>
+                        <td class="p-3 text-slate-500">${l.time_slot}</td>
+                        <td class="p-3 font-semibold text-slate-900">${l.subject}</td>
+                        <td class="p-3 text-slate-600">${l.faculty_name}</td>
+                        <td class="p-3 font-mono">${l.location}</td>
+                        <td class="p-3 text-center">${badge}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function loadTickets() {
+            const res = await fetch(`${API_BASE}/api/tickets?role=student&userId=${user.id}`);
+            const tickets = await res.json();
+            const tbody = document.getElementById('student-ticket-tbody');
+            if (tickets.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">No support tickets logged.</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = tickets.map(t => `
+                <tr class="hover:bg-slate-50">
+                    <td class="p-3 font-mono font-bold text-indigo-600">${t.ticket_id}</td>
+                    <td class="p-3 text-slate-700">${t.query}</td>
+                    <td class="p-3 text-slate-500 font-medium">${t.assigned_to || 'Department Coordinator'}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${t.status === 'Resolved' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">${t.status}</span></td>
+                    <td class="p-3 text-slate-700 font-semibold">${t.response || '<span class="text-slate-400 font-normal italic">Pending review</span>'}</td>
+                </tr>
+            `).join('');
+        }
+
+        async function handleStudentPassword(e) {
+            e.preventDefault();
+            const res = await fetch(`${API_BASE}/api/auth/change-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: user.id,
+                    oldPassword: document.getElementById('std-pwd-old').value,
+                    newPassword: document.getElementById('std-pwd-new').value
+                })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                showToast(data.message, true);
+                document.getElementById('std-pwd-old').value = '';
+                document.getElementById('std-pwd-new').value = '';
+            } else {
+                showToast(data.error);
+            }
+        }
+
+        socket.on('attendance_updated', () => loadStudentAttendance());
+        socket.on('ticket_updated', () => loadTickets());
+
+        loadSavedChat();
+    </script>
+</body>
+</html>

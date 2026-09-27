@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Governance | Silver Oak University ERP</title>
+    <script>
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        if (!token || user.role !== 'admin') window.location.href = 'index.html';
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style> 
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .dropzone-active { border-color: #4f46e5 !important; background-color: #eef2ff !important; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col md:flex-row antialiased">
+    <!-- Sliding Mobile Backdrop -->
+    <div id="mobile-backdrop" onclick="toggleMobileNav()" class="fixed inset-0 bg-slate-900/60 z-30 hidden md:hidden backdrop-blur-sm transition-opacity"></div>
+    
+    <!-- Toast Notification Container -->
+    <div id="toast-box" class="fixed top-4 right-4 left-4 sm:left-auto sm:w-96 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <!-- Mobile Top Navigation Bar -->
+    <header class="md:hidden bg-[#1e1b4b] text-white px-4 py-3 flex items-center justify-between sticky top-0 z-20 border-b border-indigo-950 shadow-md">
+        <div class="flex items-center space-x-2.5">
+            <button type="button" onclick="toggleMobileNav()" class="p-2 text-indigo-300 hover:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <i class="fa-solid fa-bars text-lg"></i>
+            </button>
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-shield-halved text-indigo-400"></i>
+                <span class="font-extrabold text-xs tracking-tight">Silver Oak Admin</span>
+            </div>
+        </div>
+        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">Master Console</span>
+    </header>
+
+    <!-- Sidebar Navigation Drawer -->
+    <aside id="sidebar-drawer" class="fixed md:static inset-y-0 left-0 w-72 bg-[#1e1b4b] text-white p-6 flex flex-col justify-between z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none" style ="display:flex;justify-content:flex-start;">
+        <div>
+            <!-- Institutional Header -->
+            <div class="flex items-center justify-between mb-6 pb-4 border-b border-indigo-950">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-lg font-bold shadow-lg shadow-indigo-600/30">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <div>
+                        <h2 class="font-extrabold text-xs leading-none">Student Portal</h2>
+                        <p class="text-[9px] text-indigo-400 uppercase font-semibold mt-1">Admin Panel</p>
+                    </div>
+                </div>
+                <button type="button" onclick="toggleMobileNav()" class="md:hidden text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Tab Switchers -->
+            <nav class="space-y-1.5 text-xs">
+                <button onclick="switchTab('dashboard')" id="tab-btn-dashboard" class="w-full text-left px-3.5 py-3 rounded-xl font-bold flex items-center space-x-3 bg-indigo-600 text-white shadow-sm transition">
+                    <i class="fa-solid fa-chart-pie w-4 text-center"></i>
+                    <span>Dashboard Metrics</span>
+                </button>
+                <button onclick="switchTab('timetable')" id="tab-btn-timetable" class="w-full text-left px-3.5 py-3 rounded-xl font-bold flex items-center space-x-3 text-slate-300 hover:bg-slate-800/60 transition">
+                    <i class="fa-solid fa-calendar-days w-4 text-center"></i>
+                    <span>Lecture Timetable</span>
+                </button>
+                <button onclick="switchTab('directory')" id="tab-btn-directory" class="w-full text-left px-3.5 py-3 rounded-xl font-bold flex items-center space-x-3 text-slate-300 hover:bg-slate-800/60 transition">
+                    <i class="fa-solid fa-users w-4 text-center"></i>
+                    <span>User Directory & Deep Filters</span>
+                </button>
+                <button onclick="switchTab('register')" id="tab-btn-register" class="w-full text-left px-3.5 py-3 rounded-xl font-bold flex items-center space-x-3 text-slate-300 hover:bg-slate-800/60 transition">
+                    <i class="fa-solid fa-user-plus w-4 text-center"></i>
+                    <span>Provision Account</span>
+                </button>
+                <button onclick="switchTab('tickets')" id="tab-btn-tickets" class="w-full text-left px-3.5 py-3 rounded-xl font-bold flex items-center space-x-3 text-slate-300 hover:bg-slate-800/60 transition">
+                    <i class="fa-solid fa-tags w-4 text-center"></i>
+                    <span>AI & University Tickets</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- Session Profile Footer -->
+        <div class="pt-10 border-t border-indigo-950">
+            <div class="flex items-center space-x-2.5 mb-3 px-1">
+                <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-300 flex items-center justify-center font-bold text-xs">
+                    <i class="fa-solid fa-user-shield"></i>
+                </div>
+                <div class="overflow-hidden">
+                    <p class="text-xs font-bold text-white truncate" id="adm-name">Super Admin</p>
+                    <p class="text-[10px] text-slate-400">Master Governance</p>
+                </div>
+            </div>
+            <button onclick="localStorage.clear(); window.location.href='index.html';" class="w-full py-2 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                <span>Sign Out</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 overflow-y-auto w-full min-w-0">
+        <!-- 1. DASHBOARD & HIERARCHICAL METRICS -->
+        <section id="view-dashboard" class="space-y-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <div>
+                    <h1 class="text-lg sm:text-xl font-extrabold text-slate-900">Institutional Governance Dashboard</h1>
+                    <p class="text-xs text-slate-500">Attendance percentages auto-compute hierarchically across Colleges, Degrees, and Branches.</p>
+                </div>
+            </div>
+
+            <!-- Dashboard Cascading Filter Strip -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Filter College</label>
+                    <select id="dash-fil-college" onchange="onDashCollegeChange()" class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold outline-none"></select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Filter Degree / Program</label>
+                    <select id="dash-fil-degree" onchange="onDashDegreeChange()" class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold outline-none"></select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Filter Branch</label>
+                    <select id="dash-fil-branch" onchange="loadStats()" class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold outline-none"></select>
+                </div>
+            </div>
+
+            <!-- Stats Metric Cards -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-3 sm:space-x-4">
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-lg sm:text-xl font-bold flex-shrink-0"><i class="fa-solid fa-user-graduate"></i></div>
+                    <div class="overflow-hidden">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase block truncate">Students</span>
+                        <h3 class="text-xl sm:text-2xl font-black text-slate-900" id="stat-students">0</h3>
+                    </div>
+                </div>
+                <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-3 sm:space-x-4">
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-lg sm:text-xl font-bold flex-shrink-0"><i class="fa-solid fa-chalkboard-user"></i></div>
+                    <div class="overflow-hidden">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase block truncate">Faculty</span>
+                        <h3 class="text-xl sm:text-2xl font-black text-slate-900" id="stat-faculty">0</h3>
+                    </div>
+                </div>
+                <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-3 sm:space-x-4">
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center text-lg sm:text-xl font-bold flex-shrink-0"><i class="fa-solid fa-ticket"></i></div>
+                    <div class="overflow-hidden">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase block truncate">Tickets</span>
+                        <h3 class="text-xl sm:text-2xl font-black text-slate-900" id="stat-tickets">0</h3>
+                    </div>
+                </div>
+                <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-3 sm:space-x-4">
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-lg sm:text-xl font-bold flex-shrink-0"><i class="fa-solid fa-chart-line"></i></div>
+                    <div class="overflow-hidden">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase block truncate">Avg Attendance</span>
+                        <h3 class="text-xl sm:text-2xl font-black text-slate-900" id="stat-attendance">100%</h3>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. TIMETABLE & LECTURE MANAGEMENT -->
+        <section id="view-timetable" class="hidden space-y-6">
+            <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+                <div>
+                    <h2 class="text-base sm:text-lg font-bold text-slate-900">University Lecture Timetable Engine</h2>
+                    <p class="text-xs text-slate-500">Configure schedules manually or bulk import via CSV/JSON (Duplicates are merged automatically).</p>
+                </div>
+
+                <!-- Mode Selectors (Scrollable on small phones) -->
+                <div class="flex space-x-2 border-b pb-2 text-xs overflow-x-auto">
+                    <button onclick="setTimetableMode('manual')" id="tt-mode-manual" class="px-3.5 py-1.5 font-bold rounded-lg bg-indigo-600 text-white shadow-sm flex-shrink-0">Manual Form</button>
+                    <button onclick="setTimetableMode('csv')" id="tt-mode-csv" class="px-3.5 py-1.5 font-bold rounded-lg text-slate-600 hover:bg-slate-100 flex-shrink-0">CSV Bulk Import</button>
+                    <button onclick="setTimetableMode('json')" id="tt-mode-json" class="px-3.5 py-1.5 font-bold rounded-lg text-slate-600 hover:bg-slate-100 flex-shrink-0">JSON Bulk Import</button>
+                </div>
+
+                <!-- A. Manual Form -->
+                <div id="tt-view-manual" class="space-y-4">
+                    <form onsubmit="handleManualTimetable(event)" class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">College *</label>
+                                <select id="tt-college" onchange="onTtCollegeChange()" required class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold outline-none"></select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Degree / Course *</label>
+                                <select id="tt-degree" onchange="onTtDegreeChange()" required class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold outline-none"></select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Branch / Specialization *</label>
+                                <select id="tt-branch" required class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold outline-none"></select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Semester *</label>
+                                <input type="number" id="tt-sem" placeholder="Semester (e.g. 7)" min="1" max="10" required class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs outline-none font-semibold">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Date *</label>
+                                <input type="date" id="tt-date" required class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Time Slot (Auto Lecture #) *</label>
+                                <select id="tt-slot" required class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs outline-none font-semibold">
+                                    <option value="09:00 AM - 10:00 AM">09:00 AM - 10:00 AM (Lec #1)</option>
+                                    <option value="10:00 AM - 11:00 AM">10:00 AM - 11:00 AM (Lec #2)</option>
+                                    <option value="11:15 AM - 12:15 PM">11:15 AM - 12:15 PM (Lec #3)</option>
+                                    <option value="01:00 PM - 02:00 PM">01:00 PM - 02:00 PM (Lec #4)</option>
+                                    <option value="02:00 PM - 03:00 PM">02:00 PM - 03:00 PM (Lec #5)</option>
+                                    <option value="03:15 PM - 04:15 PM">03:15 PM - 04:15 PM (Lec #6)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Classroom Location *</label>
+                                <input type="text" id="tt-location" required placeholder="e.g. A-101 or Lab-B" class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs outline-none">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Subject Name *</label>
+                                <input type="text" id="tt-subject" required placeholder="e.g. Artificial Intelligence Systems and Design" class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Assigned Professor *</label>
+                                <select id="tt-faculty" required class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs outline-none font-medium"></select>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full sm:w-auto px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-500 transition shadow">
+                            Save Scheduled Lecture
+                        </button>
+                    </form>
+                </div>
+
+                <!-- B. CSV Bulk Import Form -->
+                <div id="tt-view-csv" class="hidden space-y-4">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                        <p class="text-xs text-slate-500">Paste your CSV timetable or drag and drop a .csv file below:</p>
+                        <div class="flex space-x-2 w-full sm:w-auto">
+                            <button type="button" onclick="loadSampleCsv()" class="flex-1 sm:flex-none px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg border border-slate-300">
+                                <i class="fa-solid fa-file-csv mr-1 text-emerald-600"></i> Sample CSV
+                            </button>
+                            <label class="flex-1 sm:flex-none px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-lg border border-indigo-200 cursor-pointer text-center">
+                                <i class="fa-solid fa-folder-open mr-1"></i> File
+                                <input type="file" accept=".csv" onchange="handleFileSelect(event, 'tt-csv-data')" class="hidden">
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="csv-dropzone" ondragover="handleDragOver(event, this)" ondragleave="handleDragLeave(event, this)" ondrop="handleDrop(event, 'tt-csv-data', this)"
+                        class="border-2 border-dashed border-slate-300 rounded-2xl p-2 sm:p-4 transition-all bg-slate-50/50">
+                        <textarea id="tt-csv-data" rows="7" class="w-full p-3 font-mono text-[11px] bg-slate-900 text-slate-100 rounded-xl outline-none" placeholder="Paste or drop CSV here..."></textarea>
+                    </div>
+
+                    <button onclick="handleCsvTimetable()" class="w-full sm:w-auto px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-500 transition shadow">
+                        Parse & Save CSV Schedule
+                    </button>
+                </div>
+
+                <!-- C. JSON Bulk Import Form -->
+                <div id="tt-view-json" class="hidden space-y-4">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                        <p class="text-xs text-slate-500">Paste your JSON schedule payload or upload a .json file below:</p>
+                        <div class="flex space-x-2 w-full sm:w-auto">
+                            <button type="button" onclick="loadSampleJson()" class="flex-1 sm:flex-none px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg border border-slate-300">
+                                <i class="fa-solid fa-code mr-1 text-amber-600"></i> Sample JSON
+                            </button>
+                            <label class="flex-1 sm:flex-none px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-lg border border-indigo-200 cursor-pointer text-center">
+                                <i class="fa-solid fa-folder-open mr-1"></i> File
+                                <input type="file" accept=".json" onchange="handleFileSelect(event, 'tt-json-data')" class="hidden">
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="json-dropzone" ondragover="handleDragOver(event, this)" ondragleave="handleDragLeave(event, this)" ondrop="handleDrop(event, 'tt-json-data', this)"
+                        class="border-2 border-dashed border-slate-300 rounded-2xl p-2 sm:p-4 transition-all bg-slate-50/50">
+                        <textarea id="tt-json-data" rows="7" class="w-full p-3 font-mono text-[11px] bg-slate-900 text-slate-100 rounded-xl outline-none" placeholder="Paste or drop JSON here..."></textarea>
+                    </div>
+
+                    <button onclick="handleJsonTimetable()" class="w-full sm:w-auto px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-500 transition shadow">
+                        Parse & Save JSON Schedule
+                    </button>
+                </div>
+
+                <!-- Filtered Master Lectures Table -->
+                <div class="pt-6 border-t space-y-3">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                        <div>
+                            <h3 class="text-xs font-bold uppercase text-slate-700">Configured Master Lectures</h3>
+                            <p class="text-[11px] text-slate-500">Filtered view of scheduled lectures for the selected date.</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="setTodayTimetable()" class="px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-xs font-bold border border-indigo-200">Today</button>
+                            <button onclick="setAllDatesTimetable()" class="px-2.5 py-1 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg text-xs font-bold border border-slate-300">All Dates</button>
+                        </div>
+                    </div>
+
+                    <!-- Timetable Deep Filter Controls -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 p-3 bg-slate-50 rounded-xl border">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Schedule Date</label>
+                            <input type="date" id="tt-fil-date" onchange="loadTimetable()" class="w-full p-2 bg-white border rounded-lg text-xs outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Filter College</label>
+                            <select id="tt-fil-college" onchange="onTtFilterCollegeChange()" class="w-full p-2 bg-white border rounded-lg text-xs outline-none font-semibold"></select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Filter Degree</label>
+                            <select id="tt-fil-degree" onchange="onTtFilterDegreeChange()" class="w-full p-2 bg-white border rounded-lg text-xs outline-none font-semibold"></select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Filter Branch</label>
+                            <select id="tt-fil-branch" onchange="loadTimetable()" class="w-full p-2 bg-white border rounded-lg text-xs outline-none font-semibold"></select>
+                        </div>
+                    </div>
+
+                    <!-- Responsive Table Wrapper with Horizontal Scroll Guard -->
+                    <div class="overflow-x-auto rounded-xl border border-slate-200">
+                        <table class="w-full text-xs text-left whitespace-nowrap min-w-[640px]">
+                            <thead class="bg-slate-100 uppercase text-slate-600 font-bold border-b">
+                                <tr>
+                                    <th class="p-3">Date</th>
+                                    <th class="p-3">Lec #</th>
+                                    <th class="p-3">Time</th>
+                                    <th class="p-3">Subject</th>
+                                    <th class="p-3">Faculty</th>
+                                    <th class="p-3">Room</th>
+                                    <th class="p-3 text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tt-tbody" class="divide-y text-slate-700"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. DIRECTORY & DEEP FILTERS -->
+        <section id="view-directory" class="hidden space-y-6">
+            <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div>
+                        <h2 class="text-base sm:text-lg font-bold text-slate-900">Institutional Directory & Records</h2>
+                        <p class="text-xs text-slate-500">Filter students and faculty by college, degree, branch, and role.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span id="directory-count-badge" class="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full font-bold text-[11px]">
+                            Showing 0 Users
+                        </span>
+                        <div class="flex bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
+                            <button onclick="setDirRole('all')" id="btn-dir-all" class="px-2.5 sm:px-3 py-1 font-bold rounded-lg bg-indigo-600 text-white shadow-sm">All</button>
+                            <button onclick="setDirRole('student')" id="btn-dir-student" class="px-2.5 sm:px-3 py-1 font-bold rounded-lg text-slate-600">Students</button>
+                            <button onclick="setDirRole('faculty')" id="btn-dir-faculty" class="px-2.5 sm:px-3 py-1 font-bold rounded-lg text-slate-600">Faculty</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Deep Cascading Filters -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Filter by College</label>
+                        <select id="fil-college" onchange="onDirCollegeChange()" class="w-full p-2 bg-white border rounded-lg text-xs outline-none font-semibold"></select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Filter by Degree / Program</label>
+                        <select id="fil-degree" onchange="onDirDegreeChange()" class="w-full p-2 bg-white border rounded-lg text-xs outline-none font-semibold"></select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Filter by Branch</label>
+                        <select id="fil-branch" onchange="loadUsers()" class="w-full p-2 bg-white border rounded-lg text-xs outline-none font-semibold"></select>
+                    </div>
+                </div>
+
+                <!-- Table with Horizontal Scroll Guard -->
+                <div class="overflow-x-auto rounded-xl border border-slate-200">
+                    <table class="w-full text-xs text-left whitespace-nowrap min-w-[650px]">
+                        <thead class="bg-slate-100 uppercase text-slate-600 font-bold border-b">
+                            <tr>
+                                <th class="p-3">Name / Role</th>
+                                <th class="p-3">Identifier</th>
+                                <th class="p-3">College</th>
+                                <th class="p-3">Degree</th>
+                                <th class="p-3">Branch & Sem</th>
+                                <th class="p-3 text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-tbody" class="divide-y text-slate-700"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. ACCOUNT PROVISIONING -->
+        <section id="view-register" class="hidden space-y-6">
+            <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <h2 class="text-base sm:text-lg font-bold text-slate-900 mb-1">Register New Account</h2>
+                <p class="text-xs text-slate-500 mb-5">All fields are mandatory. Unique constraints enforced.</p>
+
+                <form onsubmit="handleCreateUser(event)" class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Role *</label>
+                            <select id="u-role" onchange="toggleRoleFields()" class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs outline-none font-semibold">
+                                <option value="student">Student</option>
+                                <option value="faculty">Faculty</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Full Legal Name *</label>
+                            <input type="text" id="u-name" required placeholder="e.g. Dr. Rajesh Patel" class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Institutional Email *</label>
+                            <input type="email" id="u-email" required placeholder="rajesh@silveroak.edu" class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs outline-none">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                        <div id="enroll-wrap">
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Enrollment Number *</label>
+                            <input type="text" id="u-enroll" placeholder="23040304021" class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs outline-none font-mono">
+                        </div>
+                        <div id="username-wrap" class="hidden">
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Faculty Username *</label>
+                            <input type="text" id="u-username" placeholder="rajesh.patel" class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs outline-none font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Password *</label>
+                            <input type="password" id="u-pass" required placeholder="••••••••" class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Semester *</label>
+                            <input type="number" id="u-sem" required value="7" class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs outline-none">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 pt-2">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">College *</label>
+                            <select id="u-college" onchange="onRegCollegeChange()" required class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold outline-none"></select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Degree / Course *</label>
+                            <select id="u-degree" onchange="onRegDegreeChange()" required class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold outline-none"></select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Branch / Specialization *</label>
+                            <select id="u-branch" required class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold outline-none"></select>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end pt-3">
+                        <button type="submit" class="w-full sm:w-auto px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition">
+                            Create Account
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- 5. AI & UNIVERSITY TICKETS -->
+        <section id="view-tickets" class="hidden space-y-6">
+            <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <h2 class="text-base sm:text-lg font-bold text-slate-900">University-Wide AI Support Tickets</h2>
+                <div class="overflow-x-auto rounded-xl border border-slate-200">
+                    <table class="w-full text-xs text-left whitespace-nowrap min-w-[650px]">
+                        <thead class="bg-slate-100 uppercase text-slate-600 font-bold border-b">
+                            <tr>
+                                <th class="p-3">Ticket ID</th>
+                                <th class="p-3">Student</th>
+                                <th class="p-3">Query</th>
+                                <th class="p-3">Assigned To</th>
+                                <th class="p-3">Status</th>
+                                <th class="p-3 text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-tickets-tbody" class="divide-y text-slate-700"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal Dialog -->
+    <div id="del-modal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white p-6 rounded-2xl max-w-sm w-full text-center space-y-4 shadow-2xl">
+            <h3 class="text-base font-bold text-slate-900">Confirm Permanent Deletion</h3>
+            <p class="text-xs text-slate-500">Are you sure you want to permanently remove this record?</p>
+            <div class="flex justify-center space-x-2">
+                <button onclick="closeDelModal()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-xl text-xs font-bold">Cancel</button>
+                <button id="del-confirm-btn" class="px-4 py-2 bg-rose-600 text-white rounded-xl text-xs font-bold">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts and Handlers -->
+    <script>
+        const API_BASE = (window.location.protocol === 'file:' || (window.location.port !== '3000' && window.location.port !== '')) ? 'http://localhost:3000' : '';
+
+        const universityData = [
+            {
+                college: "Silver College of Computer Application",
+                courses: [
+                    { name: "BSc", branches: ["CS-IT", "Data Science"] },
+                    { name: "BCA", branches: ["General BCA", "Cloud & Cyber Security"] },
+                    { name: "MCA", branches: ["General MCA", "AI Systems"] }
+                ]
+            },
+            {
+                college: "SILVER OAK COLLEGE OF ENGINEERING & TECHNOLOGY",
+                courses: [
+                    { name: "BACHELOR OF TECHNOLOGY (B.TECH)", branches: ["Computer Engineering", "Computer Science & Engineering", "Computer Engineering with ML & AI", "Computer Science & Engineering (Cyber Security)", "Information Technology", "Aeronautical Engineering", "Aerospace Engineering", "Electronics & Communication Engineering", "Biotechnology"] },
+                    { name: "MASTER OF TECHNOLOGY (M.TECH)", branches: ["Civil Engineering (CASAD, HWRE & TRANSPORT)", "Computer Engineering", "Mechanical Engineering (CAD-CAM)", "Electronics & Communication Engineering", "Computer Engineering (AI & ML)", "Chemical Engineering", "Cyber Security"] }
+                ]
+            },
+            {
+                college: "ADITYA SILVER OAK INSTITUTE OF TECHNOLOGY",
+                courses: [
+                    { name: "DIPLOMA ENGINEERING", branches: ["Computer Engineering", "Aeronautical Engineering", "Computer Science & Engineering", "Chemical Engineering", "Civil Engineering", "Information Technology", "Electrical Engineering", "Mechanical Engineering"] },
+                    { name: "BACHELOR OF TECHNOLOGY (B.TECH)", branches: ["Computer Science & Engineering", "Computer Engineering", "Information Technology", "Biotechnology", "Civil Engineering", "Electrical Engineering", "Chemical Engineering", "Mechanical Engineering"] }
+                ]
+            },
+            {
+                college: "SILVER OAK INSTITUTE OF MANAGEMENT",
+                courses: [
+                    { name: "BACHELOR OF BUSINESS ADMINISTRATION (BBA)", branches: ["Marketing", "Finance", "Human Resource", "Information Technology"] },
+                    { name: "MASTER OF BUSINESS ADMINISTRATION (MBA)", branches: ["Marketing", "Finance", "Human Resource Management (HR)", "International Business", "Business Analytics", "Operations & Logistics"] }
+                ]
+            },
+            {
+                college: "SILVER OAK INSTITUTE OF SCIENCE",
+                courses: [
+                    { name: "BACHELOR OF SCIENCE (B.SC)", branches: ["Physics", "Chemistry", "Microbiology", "Biotechnology", "Forensic Science"] },
+                    { name: "MASTER OF SCIENCE (M.SC)", branches: ["Organic Chemistry", "Physics", "Microbiology", "Biotechnology", "Mathematics"] }
+                ]
+            }
+        ];
+
+        let currentDirRole = 'all';
+        let deleteTargetId = null;
+        let deleteType = 'user';
+
+        document.getElementById('adm-name').innerText = user.name;
+        document.getElementById('tt-date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('tt-fil-date').value = new Date().toISOString().split('T')[0];
+
+        function toggleMobileNav() {
+            const drawer = document.getElementById('sidebar-drawer');
+            const backdrop = document.getElementById('mobile-backdrop');
+            drawer.classList.toggle('-translate-x-full');
+            backdrop.classList.toggle('hidden');
+        }
+
+        function showToast(msg, isSuccess = false) {
+            const container = document.getElementById('toast-box');
+            const toast = document.createElement('div');
+            toast.className = `p-3 rounded-xl border text-xs flex items-center shadow-lg pointer-events-auto transition ${isSuccess ? 'bg-emerald-950 border-emerald-500 text-emerald-200' : 'bg-rose-950 border-rose-500 text-rose-200'}`;
+            toast.innerHTML = `<i class="fa-solid ${isSuccess ? 'fa-check text-emerald-400' : 'fa-triangle-exclamation text-rose-400'} mr-2"></i><span>${msg}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3500);
+        }
+
+        function switchTab(tab) {
+            // Close mobile drawer on tab click
+            if (window.innerWidth < 768) {
+                document.getElementById('sidebar-drawer').classList.add('-translate-x-full');
+                document.getElementById('mobile-backdrop').classList.add('hidden');
+            }
+
+            ['dashboard', 'timetable', 'directory', 'register', 'tickets'].forEach(t => {
+                document.getElementById(`view-${t}`).classList.add('hidden');
+                document.getElementById(`tab-btn-${t}`).className = "w-full text-left px-3.5 py-3 rounded-xl font-bold flex items-center space-x-3 text-slate-300 hover:bg-slate-800/60 transition";
+            });
+            document.getElementById(`view-${tab}`).classList.remove('hidden');
+            document.getElementById(`tab-btn-${tab}`).className = "w-full text-left px-3.5 py-3 rounded-xl font-bold flex items-center space-x-3 bg-indigo-600 text-white shadow-sm transition";
+
+            if (tab === 'dashboard') loadStats();
+            if (tab === 'timetable') loadTimetable();
+            if (tab === 'directory') loadUsers();
+            if (tab === 'tickets') loadAdminTickets();
+        }
+
+        // Dashboard Metrics
+        function initDashFilters() {
+            const dCol = document.getElementById('dash-fil-college');
+            dCol.innerHTML = '<option value="All">All Colleges</option>';
+            universityData.forEach(d => dCol.innerHTML += `<option value="${d.college}">${d.college}</option>`);
+            onDashCollegeChange();
+        }
+
+        function onDashCollegeChange() {
+            const col = document.getElementById('dash-fil-college').value;
+            const dDeg = document.getElementById('dash-fil-degree');
+            dDeg.innerHTML = '<option value="All">All Degrees</option>';
+            if (col !== 'All') {
+                const match = universityData.find(d => d.college === col);
+                if (match) match.courses.forEach(c => dDeg.innerHTML += `<option value="${c.name}">${c.name}</option>`);
+            }
+            onDashDegreeChange();
+        }
+
+        function onDashDegreeChange() {
+            const col = document.getElementById('dash-fil-college').value;
+            const deg = document.getElementById('dash-fil-degree').value;
+            const dBr = document.getElementById('dash-fil-branch');
+            dBr.innerHTML = '<option value="All">All Branches</option>';
+            if (col !== 'All' && deg !== 'All') {
+                const matchCol = universityData.find(d => d.college === col);
+                if (matchCol) {
+                    const matchDeg = matchCol.courses.find(c => c.name === deg);
+                    if (matchDeg) matchDeg.branches.forEach(b => dBr.innerHTML += `<option value="${b}">${b}</option>`);
+                }
+            }
+            loadStats();
+        }
+
+        async function loadStats() {
+            const college = document.getElementById('dash-fil-college').value;
+            const degree = document.getElementById('dash-fil-degree').value;
+            const branch = document.getElementById('dash-fil-branch').value;
+
+            let url = `${API_BASE}/api/admin/stats?college=${encodeURIComponent(college)}&degree=${encodeURIComponent(degree)}&branch=${encodeURIComponent(branch)}`;
+            const res = await fetch(url);
+            const data = await res.json();
+            document.getElementById('stat-students').innerText = data.students || 0;
+            document.getElementById('stat-faculty').innerText = data.faculty || 0;
+            document.getElementById('stat-tickets').innerText = data.tickets || 0;
+            document.getElementById('stat-attendance').innerText = data.avgAttendance || '100%';
+        }
+
+        // Timetable Dropdowns
+        function initTimetableDropdowns() {
+            const ttCol = document.getElementById('tt-college');
+            ttCol.innerHTML = '';
+            universityData.forEach(d => ttCol.innerHTML += `<option value="${d.college}">${d.college}</option>`);
+            onTtCollegeChange();
+            loadFacultyDropdown();
+            initTimetableFilterDropdowns();
+        }
+
+        function onTtCollegeChange() {
+            const col = document.getElementById('tt-college').value;
+            const ttDeg = document.getElementById('tt-degree');
+            ttDeg.innerHTML = '';
+            const match = universityData.find(d => d.college === col);
+            if (match) match.courses.forEach(c => ttDeg.innerHTML += `<option value="${c.name}">${c.name}</option>`);
+            onTtDegreeChange();
+        }
+
+        function onTtDegreeChange() {
+            const col = document.getElementById('tt-college').value;
+            const deg = document.getElementById('tt-degree').value;
+            const ttBr = document.getElementById('tt-branch');
+            ttBr.innerHTML = '';
+            const matchCol = universityData.find(d => d.college === col);
+            if (matchCol) {
+                const matchDeg = matchCol.courses.find(c => c.name === deg);
+                if (matchDeg) matchDeg.branches.forEach(b => ttBr.innerHTML += `<option value="${b}">${b}</option>`);
+            }
+        }
+
+        function initTimetableFilterDropdowns() {
+            const filCol = document.getElementById('tt-fil-college');
+            filCol.innerHTML = '<option value="All">All Colleges</option>';
+            universityData.forEach(d => filCol.innerHTML += `<option value="${d.college}">${d.college}</option>`);
+            onTtFilterCollegeChange();
+        }
+
+        function onTtFilterCollegeChange() {
+            const col = document.getElementById('tt-fil-college').value;
+            const filDeg = document.getElementById('tt-fil-degree');
+            filDeg.innerHTML = '<option value="All">All Degrees</option>';
+            if (col !== 'All') {
+                const match = universityData.find(d => d.college === col);
+                if (match) match.courses.forEach(c => filDeg.innerHTML += `<option value="${c.name}">${c.name}</option>`);
+            }
+            onTtFilterDegreeChange();
+        }
+
+        function onTtFilterDegreeChange() {
+            const col = document.getElementById('tt-fil-college').value;
+            const deg = document.getElementById('tt-fil-degree').value;
+            const filBr = document.getElementById('tt-fil-branch');
+            filBr.innerHTML = '<option value="All">All Branches</option>';
+            if (col !== 'All' && deg !== 'All') {
+                const matchCol = universityData.find(d => d.college === col);
+                if (matchCol) {
+                    const matchDeg = matchCol.courses.find(c => c.name === deg);
+                    if (matchDeg) matchDeg.branches.forEach(b => filBr.innerHTML += `<option value="${b}">${b}</option>`);
+                }
+            }
+            loadTimetable();
+        }
+
+        function setTodayTimetable() {
+            document.getElementById('tt-fil-date').value = new Date().toISOString().split('T')[0];
+            loadTimetable();
+        }
+
+        function setAllDatesTimetable() {
+            document.getElementById('tt-fil-date').value = '';
+            loadTimetable();
+        }
+
+        async function loadFacultyDropdown() {
+            const res = await fetch(`${API_BASE}/api/users?targetRole=faculty`);
+            const faculty = await res.json();
+            const facSelect = document.getElementById('tt-faculty');
+            facSelect.innerHTML = faculty.map(f => `<option value="${f.name}">${f.name} (${f.branch})</option>`).join('');
+        }
+
+        function setTimetableMode(mode) {
+            ['manual', 'csv', 'json'].forEach(m => {
+                document.getElementById(`tt-view-${m}`).classList.add('hidden');
+                document.getElementById(`tt-mode-${m}`).className = "px-3.5 py-1.5 font-bold rounded-lg text-slate-600 hover:bg-slate-100 flex-shrink-0";
+            });
+            document.getElementById(`tt-view-${mode}`).classList.remove('hidden');
+            document.getElementById(`tt-mode-${mode}`).className = "px-3.5 py-1.5 font-bold rounded-lg bg-indigo-600 text-white shadow-sm flex-shrink-0";
+        }
+
+        async function loadTimetable() {
+            const date = document.getElementById('tt-fil-date').value;
+            const college = document.getElementById('tt-fil-college').value;
+            const degree = document.getElementById('tt-fil-degree').value;
+            const branch = document.getElementById('tt-fil-branch').value;
+
+            let url = `${API_BASE}/api/timetable?1=1`;
+            if (date) url += `&date=${encodeURIComponent(date)}`;
+            if (college !== 'All') url += `&college=${encodeURIComponent(college)}`;
+            if (degree !== 'All') url += `&degree=${encodeURIComponent(degree)}`;
+            if (branch !== 'All') url += `&branch=${encodeURIComponent(branch)}`;
+
+            const res = await fetch(url);
+            const data = await res.json();
+            const tbody = document.getElementById('tt-tbody');
+
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400">No scheduled master lectures found for this criteria.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = data.map(l => `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="p-3 font-semibold text-slate-900">${l.date}</td>
+                    <td class="p-3 font-bold text-indigo-700">${l.lecture_number}</td>
+                    <td class="p-3">${l.time_slot}</td>
+                    <td class="p-3 font-bold text-slate-800">${l.subject_name}</td>
+                    <td class="p-3">${l.faculty_name}</td>
+                    <td class="p-3 font-mono">${l.location}</td>
+                    <td class="p-3 text-center">
+                        <button onclick="promptDelete(${l.id}, 'timetable')" class="px-2.5 py-1 bg-rose-100 text-rose-700 rounded-lg hover:bg-rose-200 transition"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function handleManualTimetable(e) {
+            e.preventDefault();
+            const payload = {
+                college: document.getElementById('tt-college').value,
+                degree: document.getElementById('tt-degree').value,
+                branch: document.getElementById('tt-branch').value,
+                semester: document.getElementById('tt-sem').value,
+                date: document.getElementById('tt-date').value,
+                time_slot: document.getElementById('tt-slot').value,
+                location: document.getElementById('tt-location').value,
+                subject_name: document.getElementById('tt-subject').value,
+                faculty_name: document.getElementById('tt-faculty').value
+            };
+            const res = await fetch(`${API_BASE}/api/timetable/create`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (res.ok) { 
+                showToast(data.message, true); 
+                document.getElementById('tt-subject').value = '';
+                loadTimetable(); 
+            } else {
+                showToast(data.error);
+            }
+        }
+
+        const SAMPLE_CSV = `College Name,Degree,Branch,Semester,Date,Lecture Number,Lecture Time,Subject Name,Faculty Name,Location
+Silver College of Computer Application,BSc,CS-IT,7,2026-09-28,1,09:00 AM - 10:00 AM,Artificial Intelligence Systems and Design,Dr. A. K. Sharma,A-101
+Silver College of Computer Application,BSc,CS-IT,7,2026-09-28,2,10:00 AM - 11:00 AM,Database Management Systems,Prof. Meera Patel,A-203`;
+
+        const SAMPLE_JSON = `{
+  "college_name": "Silver College of Computer Application",
+  "degree": "BSc",
+  "branch": "CS-IT",
+  "semester": 7,
+  "schedule": {
+    "2026-09-28": [
+      {
+        "lecture_number": 1,
+        "time": "09:00 AM - 10:00 AM",
+        "subject_name": "Artificial Intelligence Systems and Design",
+        "faculty_name": "Dr. A. K. Sharma",
+        "location": "A-101"
+      }
+    ]
+  }
+}`;
+
+        function loadSampleCsv() { document.getElementById('tt-csv-data').value = SAMPLE_CSV; showToast("Sample CSV loaded.", true); }
+        function loadSampleJson() { document.getElementById('tt-json-data').value = SAMPLE_JSON; showToast("Sample JSON loaded.", true); }
+        function handleDragOver(e, el) { e.preventDefault(); el.classList.add('dropzone-active'); }
+        function handleDragLeave(e, el) { el.classList.remove('dropzone-active'); }
+        function handleDrop(e, targetId, el) {
+            e.preventDefault();
+            el.classList.remove('dropzone-active');
+            if (e.dataTransfer.files.length > 0) {
+                const reader = new FileReader();
+                reader.onload = (event) => { document.getElementById(targetId).value = event.target.result; };
+                reader.readAsText(e.dataTransfer.files[0]);
+            }
+        }
+        function handleFileSelect(e, targetId) {
+            if (e.target.files.length > 0) {
+                const reader = new FileReader();
+                reader.onload = (event) => { document.getElementById(targetId).value = event.target.result; };
+                reader.readAsText(e.target.files[0]);
+            }
+        }
+
+        async function handleCsvTimetable() {
+            const csvData = document.getElementById('tt-csv-data').value;
+            const res = await fetch(`${API_BASE}/api/timetable/batch-csv`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ csvData })
+            });
+            const data = await res.json();
+            if (res.ok) { showToast(data.message, true); loadTimetable(); }
+            else showToast(data.error);
+        }
+
+        async function handleJsonTimetable() {
+            const jsonData = document.getElementById('tt-json-data').value;
+            const res = await fetch(`${API_BASE}/api/timetable/batch-json`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ jsonData })
+            });
+            const data = await res.json();
+            if (res.ok) { showToast(data.message, true); loadTimetable(); }
+            else showToast(data.error);
+        }
+
+        // Directory & Filters
+        function initDirectoryDropdowns() {
+            const filCol = document.getElementById('fil-college');
+            filCol.innerHTML = '<option value="All">All Colleges</option>';
+            universityData.forEach(d => filCol.innerHTML += `<option value="${d.college}">${d.college}</option>`);
+            onDirCollegeChange();
+        }
+
+        function onDirCollegeChange() {
+            const col = document.getElementById('fil-college').value;
+            const filDeg = document.getElementById('fil-degree');
+            filDeg.innerHTML = '<option value="All">All Degrees</option>';
+            if (col !== 'All') {
+                const match = universityData.find(d => d.college === col);
+                if (match) match.courses.forEach(c => filDeg.innerHTML += `<option value="${c.name}">${c.name}</option>`);
+            }
+            onDirDegreeChange();
+        }
+
+        function onDirDegreeChange() {
+            const col = document.getElementById('fil-college').value;
+            const deg = document.getElementById('fil-degree').value;
+            const filBr = document.getElementById('fil-branch');
+            filBr.innerHTML = '<option value="All">All Branches</option>';
+            if (col !== 'All' && deg !== 'All') {
+                const matchCol = universityData.find(d => d.college === col);
+                if (matchCol) {
+                    const matchDeg = matchCol.courses.find(c => c.name === deg);
+                    if (matchDeg) matchDeg.branches.forEach(b => filBr.innerHTML += `<option value="${b}">${b}</option>`);
+                }
+            }
+            loadUsers();
+        }
+
+        function setDirRole(r) {
+            currentDirRole = r;
+            ['all', 'student', 'faculty'].forEach(x => {
+                document.getElementById(`btn-dir-${x}`).className = (x === r)
+                    ? "px-2.5 sm:px-3 py-1 font-bold rounded-lg bg-indigo-600 text-white shadow-sm"
+                    : "px-2.5 sm:px-3 py-1 font-bold rounded-lg text-slate-600";
+            });
+            loadUsers();
+        }
+
+        async function loadUsers() {
+            const college = document.getElementById('fil-college').value;
+            const degree = document.getElementById('fil-degree').value;
+            const branch = document.getElementById('fil-branch').value;
+
+            let url = `${API_BASE}/api/users?targetRole=${currentDirRole}`;
+            if (college !== 'All') url += `&college=${encodeURIComponent(college)}`;
+            if (degree !== 'All') url += `&degree=${encodeURIComponent(degree)}`;
+            if (branch !== 'All') url += `&branch=${encodeURIComponent(branch)}`;
+
+            const res = await fetch(url);
+            const users = await res.json();
+
+            const studentCount = users.filter(u => u.role === 'student').length;
+            const facultyCount = users.filter(u => u.role === 'faculty').length;
+            document.getElementById('directory-count-badge').innerText = `Showing ${users.length} Users (${studentCount} Students, ${facultyCount} Faculty)`;
+
+            const tbody = document.getElementById('users-tbody');
+            if (users.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-400">No matching user records found.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = users.map(u => `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="p-3">
+                        <div class="font-bold text-slate-900">${u.name}</div>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded ${u.role === 'student' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}">${u.role.toUpperCase()}</span>
+                    </td>
+                    <td class="p-3 font-mono font-medium">${u.enrollment_no || u.username || u.email}</td>
+                    <td class="p-3 text-[11px] font-semibold text-slate-700 max-w-xs truncate">${u.college}</td>
+                    <td class="p-3 text-slate-600">${u.degree}</td>
+                    <td class="p-3">
+                        <span class="font-bold text-indigo-700">${u.branch}</span>
+                        <span class="text-[10px] text-slate-400 block">Semester ${u.semester || 7}</span>
+                    </td>
+                    <td class="p-3 text-center">
+                        <button onclick="promptDelete(${u.id}, 'user')" class="px-2.5 py-1 bg-rose-100 text-rose-700 rounded-lg hover:bg-rose-200 transition"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Account Provisioning
+        function initRegisterDropdowns() {
+            const uCol = document.getElementById('u-college');
+            uCol.innerHTML = '';
+            universityData.forEach(d => uCol.innerHTML += `<option value="${d.college}">${d.college}</option>`);
+            onRegCollegeChange();
+        }
+
+        function onRegCollegeChange() {
+            const col = document.getElementById('u-college').value;
+            const uDeg = document.getElementById('u-degree');
+            uDeg.innerHTML = '';
+            const match = universityData.find(d => d.college === col);
+            if (match) match.courses.forEach(c => uDeg.innerHTML += `<option value="${c.name}">${c.name}</option>`);
+            onRegDegreeChange();
+        }
+
+        function onRegDegreeChange() {
+            const col = document.getElementById('u-college').value;
+            const deg = document.getElementById('u-degree').value;
+            const uBr = document.getElementById('u-branch');
+            uBr.innerHTML = '';
+            const matchCol = universityData.find(d => d.college === col);
+            if (matchCol) {
+                const matchDeg = matchCol.courses.find(c => c.name === deg);
+                if (matchDeg) matchDeg.branches.forEach(b => uBr.innerHTML += `<option value="${b}">${b}</option>`);
+            }
+        }
+
+        function toggleRoleFields() {
+            const role = document.getElementById('u-role').value;
+            if (role === 'student') {
+                document.getElementById('enroll-wrap').classList.remove('hidden');
+                document.getElementById('username-wrap').classList.add('hidden');
+            } else {
+                document.getElementById('enroll-wrap').classList.add('hidden');
+                document.getElementById('username-wrap').classList.remove('hidden');
+            }
+        }
+
+        async function handleCreateUser(e) {
+            e.preventDefault();
+            const payload = {
+                role: document.getElementById('u-role').value,
+                name: document.getElementById('u-name').value.trim(),
+                email: document.getElementById('u-email').value.trim(),
+                username: document.getElementById('u-username').value.trim(),
+                enrollment_no: document.getElementById('u-enroll').value.trim(),
+                password: document.getElementById('u-pass').value,
+                semester: document.getElementById('u-sem').value,
+                college: document.getElementById('u-college').value,
+                degree: document.getElementById('u-degree').value,
+                branch: document.getElementById('u-branch').value
+            };
+            const res = await fetch(`${API_BASE}/api/users/create`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (res.ok) { showToast(data.message, true); switchTab('directory'); }
+            else showToast(data.error);
+        }
+
+        async function loadAdminTickets() {
+            const res = await fetch(`${API_BASE}/api/tickets?role=admin`);
+            const data = await res.json();
+            document.getElementById('admin-tickets-tbody').innerHTML = data.map(t => `
+                <tr class="hover:bg-slate-50">
+                    <td class="p-3 font-mono font-bold text-indigo-600">${t.ticket_id}</td>
+                    <td class="p-3">${t.student_name} (${t.enrollment_no})</td>
+                    <td class="p-3 text-slate-700">${t.query}</td>
+                    <td class="p-3">${t.assigned_to || 'Faculty Desk'}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${t.status === 'Resolved' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">${t.status}</span></td>
+                    <td class="p-3 text-center">
+                        <button onclick="promptDelete('${t.ticket_id}', 'ticket')" class="px-2 py-1 bg-rose-100 text-rose-700 rounded-lg hover:bg-rose-200"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function promptDelete(id, type) {
+            deleteTargetId = id;
+            deleteType = type;
+            document.getElementById('del-modal').classList.remove('hidden');
+            document.getElementById('del-modal').classList.add('flex');
+        }
+        function closeDelModal() {
+            document.getElementById('del-modal').classList.add('hidden');
+            document.getElementById('del-modal').classList.remove('flex');
+        }
+        document.getElementById('del-confirm-btn').onclick = async () => {
+            if (deleteType === 'user') {
+                await fetch(`${API_BASE}/api/users/${deleteTargetId}`, { method: 'DELETE' });
+                showToast("User record deleted.", true);
+                loadUsers();
+                loadStats();
+            } else if (deleteType === 'ticket') {
+                await fetch(`${API_BASE}/api/tickets/${deleteTargetId}`, { method: 'DELETE' });
+                showToast("Ticket purged.", true);
+                loadAdminTickets();
+                loadStats();
+            } else if (deleteType === 'timetable') {
+                await fetch(`${API_BASE}/api/timetable/${deleteTargetId}`, { method: 'DELETE' });
+                showToast("Scheduled lecture removed.", true);
+                loadTimetable();
+            }
+            closeDelModal();
+        };
+
+        // Initialize Everything on Load
+        initDashFilters();
+        initTimetableDropdowns();
+        initDirectoryDropdowns();
+        initRegisterDropdowns();
+        loadStats();
+    </script>
+</body>
+</html>
